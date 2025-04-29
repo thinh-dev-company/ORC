@@ -7,6 +7,8 @@
   <style>
     canvas { border: 1px solid #ccc; cursor: crosshair; }
     #output { white-space: pre-wrap; background: #f0f0f0; margin-top: 10px; padding: 10px; }
+    .point { fill: red; }
+    .highlight { stroke: green; stroke-width: 3; fill: rgba(0, 255, 0, 0.3); }
   </style>
 </head>
 <body>
@@ -37,6 +39,7 @@
       reader.readAsDataURL(file);
     });
 
+    // Lắng nghe sự kiện click trên canvas để chọn điểm
     canvas.addEventListener("click", async e => {
       if (points.length >= 4) return;
 
@@ -51,8 +54,28 @@
       ctx.arc(x, y, 5, 0, Math.PI * 2);
       ctx.fill();
 
-      // Khi chọn đủ 4 điểm, thực hiện crop và OCR
+      // Vẽ đường viền nếu đã chọn đủ 4 điểm
       if (points.length === 4) {
+        ctx.strokeStyle = "green";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        ctx.lineTo(points[1].x, points[1].y);
+        ctx.lineTo(points[2].x, points[2].y);
+        ctx.lineTo(points[3].x, points[3].y);
+        ctx.closePath();
+        ctx.stroke();
+
+        // Thêm highlight cho vùng được chọn
+        ctx.fillStyle = "rgba(0, 255, 0, 0.3)";
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        ctx.lineTo(points[1].x, points[1].y);
+        ctx.lineTo(points[2].x, points[2].y);
+        ctx.lineTo(points[3].x, points[3].y);
+        ctx.closePath();
+        ctx.fill();
+
         output.innerText = "⏳ Đang xử lý OCR...";
 
         // Tạo canvas tạm để crop vùng hình học
@@ -65,7 +88,7 @@
         tempCanvas.width = width;
         tempCanvas.height = height;
 
-        // Sử dụng context setTransform để vẽ từ 4 điểm => rectangle mới
+        // Dùng context setTransform để vẽ từ 4 điểm => rectangle mới
         const [p0, p1, p2, p3] = points;
 
         // Dùng Path2D (đơn giản) để cắt theo vùng điểm chọn
