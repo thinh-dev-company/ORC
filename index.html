@@ -2,120 +2,81 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>OCR Tiếng Việt - Chọn vùng quét</title>
+  <title>OCR chọn vùng theo 4 điểm</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <style>
-    body { font-family: Arial; padding: 20px; }
-    label.upload-btn {
-      display: inline-block;
-      padding: 10px 20px;
-      background-color: #007bff;
-      color: white;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-bottom: 10px;
-    }
-    input[type="file"] { display: none; }
-    canvas {
-      border: 1px solid #aaa;
-      cursor: crosshair;
-      margin-top: 10px;
-      max-width: 100%;
-    }
-    #output {
-      margin-top: 20px;
-      white-space: pre-wrap;
-      background: #f8f8f8;
-      padding: 10px;
-      border-radius: 5px;
-    }
+    canvas { border: 1px solid #ccc; cursor: crosshair; }
+    #output { white-space: pre-wrap; background: #f0f0f0; margin-top: 10px; padding: 10px; }
   </style>
 </head>
 <body>
-  <h2>📄 OCR Tiếng Việt – Chọn vùng ảnh để quét</h2>
-
-  <label class="upload-btn" for="imageUploader">📤 Chọn ảnh từ máy</label>
-  <input type="file" id="imageUploader" accept="image/*">
-
+  <h3>📸 Chọn ảnh và click 4 điểm theo chiều kim đồng hồ</h3>
+  <input type="file" id="upload" accept="image/*"><br><br>
   <canvas id="canvas"></canvas>
-
-  <div id="output"><b>📑 Kết quả OCR sẽ hiển thị tại đây...</b></div>
+  <div id="output">📝 Kết quả OCR sẽ hiển thị ở đây...</div>
 
   <script>
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
     const output = document.getElementById("output");
-    let img = new Image();
-    let startX, startY, isDragging = false;
-    let imgDataUrl;
 
-    document.getElementById("imageUploader").addEventListener("change", function () {
-      const file = this.files[0];
-      if (!file) return;
+    let img = new Image();
+    let points = [];
+
+    document.getElementById("upload").addEventListener("change", e => {
+      const file = e.target.files[0];
       const reader = new FileReader();
-      reader.onload = function (e) {
-        img.onload = function () {
+      reader.onload = () => {
+        img.onload = () => {
           canvas.width = img.width;
           canvas.height = img.height;
           ctx.drawImage(img, 0, 0);
         };
-        img.src = e.target.result;
-        imgDataUrl = e.target.result;
+        img.src = reader.result;
       };
       reader.readAsDataURL(file);
     });
 
-    // Vẽ vùng chọn bằng chuột
-    canvas.addEventListener("mousedown", e => {
+    canvas.addEventListener("click", async e => {
+      if (points.length >= 4) return;
+
       const rect = canvas.getBoundingClientRect();
-      startX = e.clientX - rect.left;
-      startY = e.clientY - rect.top;
-      isDragging = true;
-    });
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      points.push({ x, y });
 
-    canvas.addEventListener("mouseup", async e => {
-      if (!isDragging) return;
-      isDragging = false;
-      const rect = canvas.getBoundingClientRect();
-      const endX = e.clientX - rect.left;
-      const endY = e.clientY - rect.top;
+      // Vẽ điểm vừa chọn
+      ctx.fillStyle = "red";
+      ctx.beginPath();
+      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.fill();
 
-      const x = Math.min(startX, endX);
-      const y = Math.min(startY, endY);
-      const width = Math.abs(endX - startX);
-      const height = Math.abs(endY - startY);
+      // Khi chọn đủ 4 điểm, thực hiện crop và OCR
+      if (points.length === 4) {
+        output.innerText = "⏳ Đang xử lý OCR...";
 
-      // Tạo canvas tạm để crop
-      const tempCanvas = document.createElement("canvas");
-      const tempCtx = tempCanvas.getContext("2d");
-      tempCanvas.width = width;
-      tempCanvas.height = height;
-      tempCtx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
+        // Tạo canvas tạm để crop vùng hình học
+        const tempCanvas = document.createElement("canvas");
+        const tempCtx = tempCanvas.getContext("2d");
 
-      output.innerHTML = "⏳ Đang nhận dạng văn bản vùng được chọn...";
+        // Xác định khung chữ nhật mới
+        const width = Math.hypot(points[1].x - points[0].x, points[1].y - points[0].y);
+        const height = Math.hypot(points[3].x - points[0].x, points[3].y - points[0].y);
+        tempCanvas.width = width;
+        tempCanvas.height = height;
 
-      const result = await Tesseract.recognize(tempCanvas, 'vie+eng', {
-        logger: m => console.log(m)
-      });
+        // Sử dụng context setTransform để vẽ từ 4 điểm => rectangle mới
+        const [p0, p1, p2, p3] = points;
 
-      output.innerHTML = `<b>📑 Kết quả OCR:</b><br><br>${result.data.text}`;
-    });
+        // Dùng Path2D (đơn giản) để cắt theo vùng điểm chọn
+        const path = new Path2D();
+        path.moveTo(p0.x, p0.y);
+        path.lineTo(p1.x, p1.y);
+        path.lineTo(p2.x, p2.y);
+        path.lineTo(p3.x, p3.y);
+        path.closePath();
 
-    canvas.addEventListener("mousemove", e => {
-      if (!isDragging) return;
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-
-      // Hiển thị lại ảnh gốc
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
-
-      // Vẽ vùng chọn
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(startX, startY, mouseX - startX, mouseY - startY);
-    });
-  </script>
-</body>
-</html>
+        // Dùng getImageData + putImageData nếu không dùng opencv.js
+        const minX = Math.min(...points.map(p => p.x));
+        const minY = Math.min(...points.map(p => p.y));
+        const max
