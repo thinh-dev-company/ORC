@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <title>ZXing + Tesseract OCR</title>
+  <title>ZXing + Tesseract OCR (Tiếng Việt)</title>
   <style>
     video, canvas {
       max-width: 100%;
@@ -13,13 +13,13 @@
   </style>
 </head>
 <body>
-  <h2>ZXing Barcode/QR + Tesseract OCR Scanner</h2>
+  <h2>Quét QR/Barcode & Văn bản Tiếng Việt</h2>
   <video id="video" autoplay muted playsinline></video><br />
-  <button id="ocrBtn">Quét OCR từ khung hình</button>
+  <button id="ocrBtn">Quét văn bản (OCR tiếng Việt)</button>
 
-  <p><strong>Barcode/QR:</strong> <span id="barcodeResult">Đang chờ...</span></p>
-  <p><strong>OCR Result:</strong></p>
-  <div id="output">[Kết quả OCR hiển thị ở đây]</div>
+  <p><strong>Mã QR / Barcode:</strong> <span id="barcodeResult">Đang chờ...</span></p>
+  <p><strong>Kết quả OCR:</strong></p>
+  <div id="output">[Chưa có kết quả]</div>
 
   <canvas id="canvas" style="display:none;"></canvas>
 
@@ -44,6 +44,7 @@
     const ocrBtn = document.getElementById('ocrBtn');
     const canvas = document.getElementById('canvas');
     const output = document.getElementById('output');
+    const video = document.getElementById('video');
 
     ocrBtn.addEventListener('click', async () => {
       const ctx = canvas.getContext('2d');
@@ -51,13 +52,17 @@
       canvas.height = video.videoHeight;
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      output.textContent = 'Đang quét OCR...';
+      output.textContent = 'Đang quét văn bản...';
 
-      const { data: { text } } = await Tesseract.recognize(canvas, 'eng', {
-        logger: m => console.log(m)
-      });
+      const { data: { text } } = await Tesseract.recognize(
+        canvas,
+        'vie',  // Ngôn ngữ Tiếng Việt
+        {
+          logger: m => console.log(m)
+        }
+      );
 
-      output.textContent = text || '[Không tìm thấy văn bản]';
+      output.textContent = text || '[Không nhận dạng được văn bản]';
     });
   </script>
 </body>
