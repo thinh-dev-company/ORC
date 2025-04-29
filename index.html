@@ -6,16 +6,31 @@
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <style>
     body { font-family: Arial; padding: 20px; }
-    #preview { margin-top: 10px; max-width: 100%; border: 1px solid #ccc; }
+    label.upload-btn {
+      display: inline-block;
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    input[type="file"] {
+      display: none;
+    }
+    #preview { max-width: 100%; margin-top: 10px; border: 1px solid #ccc; }
     #output { margin-top: 20px; white-space: pre-wrap; background: #f4f4f4; padding: 10px; border-radius: 5px; }
   </style>
 </head>
 <body>
-  <h2>🖼️ Tải ảnh để nhận dạng văn bản (Tiếng Việt)</h2>
+  <h2>📄 Nhận dạng văn bản từ ảnh (OCR Tiếng Việt)</h2>
+
+  <label class="upload-btn" for="imageUploader">📤 Chọn ảnh từ máy</label>
   <input type="file" id="imageUploader" accept="image/*">
+
   <canvas id="canvas" style="display:none;"></canvas>
   <img id="preview" />
-  <div id="output">📄 <b>Kết quả OCR sẽ hiện tại đây...</b></div>
+  <div id="output">📄 <b>Kết quả OCR sẽ hiển thị tại đây...</b></div>
 
   <script>
     const imageUploader = document.getElementById("imageUploader");
@@ -30,18 +45,14 @@
 
       const img = new Image();
       img.onload = async function () {
-        // Resize canvas
         canvas.width = img.width;
         canvas.height = img.height;
-
-        // Xử lý ảnh: tăng tương phản, chuyển grayscale
         ctx.filter = "contrast(150%) grayscale(100%)";
         ctx.drawImage(img, 0, 0);
 
         preview.src = canvas.toDataURL("image/png");
         output.textContent = "⏳ Đang xử lý OCR...";
 
-        // OCR với tiếng Việt
         const result = await Tesseract.recognize(canvas, 'vie+eng', {
           logger: m => console.log(m)
         });
