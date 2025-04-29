@@ -79,4 +79,21 @@
         // Dùng getImageData + putImageData nếu không dùng opencv.js
         const minX = Math.min(...points.map(p => p.x));
         const minY = Math.min(...points.map(p => p.y));
-        const max
+        const maxX = Math.max(...points.map(p => p.x));
+        const maxY = Math.max(...points.map(p => p.y));
+        const cropWidth = maxX - minX;
+        const cropHeight = maxY - minY;
+
+        const imageData = ctx.getImageData(minX, minY, cropWidth, cropHeight);
+        tempCanvas.width = cropWidth;
+        tempCanvas.height = cropHeight;
+        tempCtx.putImageData(imageData, 0, 0);
+
+        // Chạy OCR
+        const result = await Tesseract.recognize(tempCanvas, 'vie+eng');
+        output.innerText = result.data.text;
+      }
+    });
+  </script>
+</body>
+</html>
