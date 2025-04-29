@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <title>OCR Tiếng Việt - Tesseract</title>
+  <title>OCR Tiếng Việt - Chọn vùng quét</title>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4.0.2/dist/tesseract.min.js"></script>
   <style>
     body { font-family: Arial; padding: 20px; }
@@ -15,56 +15,106 @@
       cursor: pointer;
       margin-bottom: 10px;
     }
-    input[type="file"] {
-      display: none;
+    input[type="file"] { display: none; }
+    canvas {
+      border: 1px solid #aaa;
+      cursor: crosshair;
+      margin-top: 10px;
+      max-width: 100%;
     }
-    #preview { max-width: 100%; margin-top: 10px; border: 1px solid #ccc; }
-    #output { margin-top: 20px; white-space: pre-wrap; background: #f4f4f4; padding: 10px; border-radius: 5px; }
+    #output {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      background: #f8f8f8;
+      padding: 10px;
+      border-radius: 5px;
+    }
   </style>
 </head>
 <body>
-  <h2>📄 Nhận dạng văn bản từ ảnh (OCR Tiếng Việt)</h2>
+  <h2>📄 OCR Tiếng Việt – Chọn vùng ảnh để quét</h2>
 
   <label class="upload-btn" for="imageUploader">📤 Chọn ảnh từ máy</label>
   <input type="file" id="imageUploader" accept="image/*">
 
-  <canvas id="canvas" style="display:none;"></canvas>
-  <img id="preview" />
-  <div id="output">📄 <b>Kết quả OCR sẽ hiển thị tại đây...</b></div>
+  <canvas id="canvas"></canvas>
+
+  <div id="output"><b>📑 Kết quả OCR sẽ hiển thị tại đây...</b></div>
 
   <script>
-    const imageUploader = document.getElementById("imageUploader");
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
-    const preview = document.getElementById("preview");
     const output = document.getElementById("output");
+    let img = new Image();
+    let startX, startY, isDragging = false;
+    let imgDataUrl;
 
-    imageUploader.addEventListener("change", async function () {
+    document.getElementById("imageUploader").addEventListener("change", function () {
       const file = this.files[0];
       if (!file) return;
-
-      const img = new Image();
-      img.onload = async function () {
-        canvas.width = img.width;
-        canvas.height = img.height;
-        ctx.filter = "contrast(150%) grayscale(100%)";
-        ctx.drawImage(img, 0, 0);
-
-        preview.src = canvas.toDataURL("image/png");
-        output.textContent = "⏳ Đang xử lý OCR...";
-
-        const result = await Tesseract.recognize(canvas, 'vie+eng', {
-          logger: m => console.log(m)
-        });
-
-        output.innerHTML = `<b>📑 Kết quả OCR:</b><br><br>${result.data.text}`;
-      };
-
       const reader = new FileReader();
       reader.onload = function (e) {
+        img.onload = function () {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+        };
         img.src = e.target.result;
+        imgDataUrl = e.target.result;
       };
       reader.readAsDataURL(file);
+    });
+
+    // Vẽ vùng chọn bằng chuột
+    canvas.addEventListener("mousedown", e => {
+      const rect = canvas.getBoundingClientRect();
+      startX = e.clientX - rect.left;
+      startY = e.clientY - rect.top;
+      isDragging = true;
+    });
+
+    canvas.addEventListener("mouseup", async e => {
+      if (!isDragging) return;
+      isDragging = false;
+      const rect = canvas.getBoundingClientRect();
+      const endX = e.clientX - rect.left;
+      const endY = e.clientY - rect.top;
+
+      const x = Math.min(startX, endX);
+      const y = Math.min(startY, endY);
+      const width = Math.abs(endX - startX);
+      const height = Math.abs(endY - startY);
+
+      // Tạo canvas tạm để crop
+      const tempCanvas = document.createElement("canvas");
+      const tempCtx = tempCanvas.getContext("2d");
+      tempCanvas.width = width;
+      tempCanvas.height = height;
+      tempCtx.drawImage(canvas, x, y, width, height, 0, 0, width, height);
+
+      output.innerHTML = "⏳ Đang nhận dạng văn bản vùng được chọn...";
+
+      const result = await Tesseract.recognize(tempCanvas, 'vie+eng', {
+        logger: m => console.log(m)
+      });
+
+      output.innerHTML = `<b>📑 Kết quả OCR:</b><br><br>${result.data.text}`;
+    });
+
+    canvas.addEventListener("mousemove", e => {
+      if (!isDragging) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      // Hiển thị lại ảnh gốc
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+
+      // Vẽ vùng chọn
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(startX, startY, mouseX - startX, mouseY - startY);
     });
   </script>
 </body>
